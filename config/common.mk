@@ -69,10 +69,8 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # Thank you, please drive thru!
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.dun.override=0
 
-ifneq ($(TARGET_BUILD_VARIANT),eng)
-# Enable ADB authentication
-ADDITIONAL_DEFAULT_PROPERTIES += ro.adb.secure=1
-endif
+# Disable ADB authentication
+ADDITIONAL_DEFAULT_PROPERTIES += ro.adb.secure=0
 
 # Copy over the changelog to the device
 PRODUCT_COPY_FILES += \
@@ -107,8 +105,8 @@ PRODUCT_COPY_FILES += \
 # MoKee prebuilts
 PRODUCT_COPY_FILES += \
     vendor/mk/prebuilt/ota/verifier:system/bin/verifier \
-    vendor/mk/prebuilt/common/etc/init.d/88preinstall:system/etc/init.d/88preinstall \
-    vendor/mk/prebuilt/common/app/iFlyIME.apk:system/app/iFlyIME.apk
+    vendor/mk/prebuilt/common/etc/init.d/88preinstall:system/etc/init.d/88preinstall
+#    vendor/mk/prebuilt/common/app/iFlyIME.apk:system/app/iFlyIME.apk
 
 # Use all prebuilts lib files
 PRODUCT_COPY_FILES += $(shell test -d vendor/mk/prebuilt/common/lib && \
@@ -116,16 +114,9 @@ PRODUCT_COPY_FILES += $(shell test -d vendor/mk/prebuilt/common/lib && \
     -printf '%p:system/lib/%f ')
 
 # Use all third-party apk
-PRODUCT_COPY_FILES += $(shell test -d vendor/mk/prebuilt/third/app && \
-    find vendor/mk/prebuilt/third/app -name '*.apk' \
-    -printf '%p:system/third-app/%f ')
-
-# Google IME
-ifneq ($(TARGET_EXCLUDE_GOOGLE_IME),true)
-PRODUCT_COPY_FILES += \
-    vendor/mk/prebuilt/common/app/GoogleIME.apk:system/app/GoogleIME.apk \
-    vendor/mk/prebuilt/common/lib/libjni_unbundled_latinimegoogle.so:system/lib/libjni_unbundled_latinimegoogle.so
-endif
+#PRODUCT_COPY_FILES += $(shell test -d vendor/mk/prebuilt/third/app && \
+#    find vendor/mk/prebuilt/third/app -name '*.apk' \
+#    -printf '%p:system/third-app/%f ')
 
 # Bring in camera effects
 PRODUCT_COPY_FILES +=  \

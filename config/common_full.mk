@@ -4,6 +4,9 @@ $(call inherit-product, vendor/mk/config/common.mk)
 # Include MK audio files
 include vendor/mk/config/mk_audio.mk
 
+# Bring in Evervolv a2sd and init.d scripts
+include vendor/mk/config/tools.mk
+
 # Include MK LatinIME dictionaries
 PRODUCT_PACKAGE_OVERLAYS += vendor/mk/overlay/dictionaries
 
@@ -13,7 +16,6 @@ PRODUCT_PACKAGES += \
     HoloSpiralWallpaper \
     LiveWallpapers \
     LiveWallpapersPicker \
-    MagicSmokeWallpapers \
     NoiseField \
     PhaseBeam \
     VisualizationWallpapers \

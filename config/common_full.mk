@@ -8,7 +8,7 @@ include vendor/mk/config/mk_audio.mk
 include vendor/mk/config/tools.mk
 
 # Disable MK GoogleIME
-TARGET_EXCLUDE_GOOGLE_IME := false
+TARGET_EXCLUDE_GOOGLE_IME := true
 
 # Include MK LatinIME dictionaries
 PRODUCT_PACKAGE_OVERLAYS += vendor/mk/overlay/dictionaries

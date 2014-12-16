@@ -1,10 +1,5 @@
 PRODUCT_BRAND ?= mokee
 
-# Odex support for official releases 
-ifdef MK_RELEASE
-WITH_DEXPREOPT := true
-endif
-
 SUPERUSER_EMBEDDED := true
 SUPERUSER_PACKAGE_PREFIX := com.android.settings.cyanogenmod.superuser
 
@@ -66,6 +61,10 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.build.selinux=1
 
+# Disable multithreaded dexopt by default
+PRODUCT_PROPERTY_OVERRIDES += \
+    persist.sys.dalvik.multithread=false
+
 # Thank you, please drive thru!
 PRODUCT_PROPERTY_OVERRIDES += persist.sys.dun.override=0
 
@@ -75,6 +74,10 @@ ADDITIONAL_DEFAULT_PROPERTIES += ro.adb.secure=0
 # Copy over the changelog to the device
 PRODUCT_COPY_FILES += \
     vendor/mk/CHANGELOG.mkdn:system/etc/CHANGELOG-MK.txt
+
+# Copy over the translator to the device
+PRODUCT_COPY_FILES += \
+    vendor/mk/TRANSLATOR.mkdn:system/etc/TRANSLATOR-MK.txt
 
 # Backup Tool
 ifneq ($(WITH_GMS),true)
@@ -102,21 +105,32 @@ PRODUCT_COPY_FILES += \
 PRODUCT_COPY_FILES += \
     vendor/mk/prebuilt/common/etc/init.local.rc:root/init.mk.rc
 
-# MoKee prebuilts
+# MoKee prebuilt
 PRODUCT_COPY_FILES += \
     vendor/mk/prebuilt/ota/verifier:system/bin/verifier \
     vendor/mk/prebuilt/common/etc/init.d/88preinstall:system/etc/init.d/88preinstall
 #    vendor/mk/prebuilt/common/app/iFlyIME.apk:system/app/iFlyIME.apk
 
-# Use all prebuilts lib files
+# Use all prebuilt lib files
 PRODUCT_COPY_FILES += $(shell test -d vendor/mk/prebuilt/common/lib && \
     find vendor/mk/prebuilt/common/lib -name '*.so' \
     -printf '%p:system/lib/%f ')
 
+# Use all developers-party apk
+PRODUCT_COPY_FILES += $(shell test -d vendor/mk/prebuilt/$(DEVELOPER_MAINTAINER)/app && \
+    find vendor/mk/prebuilt/$(DEVELOPER_MAINTAINER)/app -name '*.apk' \
+    -printf '%p:system/third-app/%f ')
+
 # Use all third-party apk
-#PRODUCT_COPY_FILES += $(shell test -d vendor/mk/prebuilt/third/app && \
-#    find vendor/mk/prebuilt/third/app -name '*.apk' \
-#    -printf '%p:system/third-app/%f ')
+PRODUCT_COPY_FILES += $(shell test -d vendor/mk/prebuilt/third/app && \
+    find vendor/mk/prebuilt/third/app -name '*.apk' \
+    -printf '%p:system/third-app/%f ')
+
+# Google IME
+ifneq ($(TARGET_EXCLUDE_GOOGLE_IME),true)
+PRODUCT_COPY_FILES += \
+    vendor/mk/prebuilt/common/app/GoogleIME.apk:system/app/GoogleIME.apk
+endif
 
 # Bring in camera effects
 PRODUCT_COPY_FILES +=  \
@@ -130,6 +144,11 @@ PRODUCT_COPY_FILES += \
 # Enable wireless Xbox 360 controller support
 PRODUCT_COPY_FILES += \
     frameworks/base/data/keyboards/Vendor_045e_Product_028e.kl:system/usr/keylayout/Vendor_045e_Product_0719.kl
+
+# Chromium Prebuilt
+ifeq ($(PRODUCT_PREBUILT_WEBVIEWCHROMIUM),yes)
+-include prebuilts/chromium/$(TARGET_DEVICE)/chromium_prebuilt.mk
+endif
 
 # This is MK!
 PRODUCT_COPY_FILES += \
@@ -150,6 +169,9 @@ PRODUCT_PACKAGES += \
     libemoji
 
 # Custom MK packages
+
+PRODUCT_PROPERTY_OVERRIDES += \
+    persist.radio.ipcall.enabled=true
 
 # MoKee PhoneLoc Database
 PRODUCT_COPY_FILES +=  \
@@ -190,6 +212,9 @@ PRODUCT_PACKAGES += \
     mount.exfat \
     fsck.exfat \
     mkfs.exfat \
+    mkfs.f2fs \
+    fsck.f2fs \
+    fibmap.f2fs \
     ntfsfix \
     ntfs-3g \
     gdbserver \
@@ -237,16 +262,13 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 endif
 
-# easy way to extend to add more packages
--include vendor/extra/product.mk
-
 PRODUCT_PACKAGE_OVERLAYS += vendor/mk/overlay/common
 
 PRODUCT_VERSION_MAJOR = 44
 PRODUCT_VERSION_MINOR = 4
 PRODUCT_VERSION_MAINTENANCE = 0
 
-# Set MK_BUILDTYPE
+# Set MK_BUILDTYPE and Odex support
 ifneq ($(filter mokee buildbot-0x,$(shell python -c 'import os;print os.uname()[1][:11]')),)
 
     ifdef MK_NIGHTLY
@@ -257,6 +279,11 @@ ifneq ($(filter mokee buildbot-0x,$(shell python -c 'import os;print os.uname()[
     endif
     ifdef MK_RELEASE
         MK_BUILDTYPE := RELEASE
+        WITH_DEXPREOPT := true
+    endif
+    ifdef MK_HISTORY
+        MK_BUILDTYPE := HISTORY
+        WITH_DEXPREOPT := true
     endif
 endif
 
@@ -275,11 +302,11 @@ else
     MK_EXTRAVERSION :=
 endif
 
-ifeq ($(MK_BUILDTYPE), RELEASE)
+ifneq ($(filter RELEASE HISTORY,$(MK_BUILDTYPE)),)
     ifdef MK_BUILD_DATE
-        MK_VERSION := MK$(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR)-$(MK_BUILD)-$(MK_BUILD_DATE)-RELEASE
+        MK_VERSION := MK$(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR)-$(MK_BUILD)-$(MK_BUILD_DATE)-$(MK_BUILDTYPE)
     else
-        MK_VERSION := MK$(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR)-$(MK_BUILD)-$(shell date +%y%m%d)-RELEASE
+        MK_VERSION := MK$(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR)-$(MK_BUILD)-$(shell date +%y%m%d)-$(MK_BUILDTYPE)
     endif
 else
     MK_VERSION := MK$(PRODUCT_VERSION_MAJOR).$(PRODUCT_VERSION_MINOR)-$(MK_BUILD)-$(shell date +%Y%m%d%H%M)-$(MK_BUILDTYPE)
@@ -294,12 +321,9 @@ PRODUCT_PROPERTY_OVERRIDES += \
   ro.mk.releasetype=$(MK_BUILDTYPE) \
   ro.modversion=$(MK_VERSION)
 
--include vendor/cm-priv/keys/keys.mk
+-include vendor/mk-priv/keys/keys.mk
 
-# disable multithreaded dextop for RELEASE builds
-ifneq ($(filter RELEASE,$(MK_BUILDTYPE)),)
-PRODUCT_PROPERTY_OVERRIDES += \
-  persist.sys.dalvik.multithread=false
-endif
 
 -include $(WORKSPACE)/build-env/image-auto-bits.mk
+
+$(call inherit-product-if-exists, vendor/extra/product.mk)
